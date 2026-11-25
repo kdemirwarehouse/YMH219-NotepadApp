@@ -7,7 +7,7 @@ her açıldığında otomatik olarak geri yüklenir. Nesne Tabanlı Programlama 
 | | |
 |---|---|
 | **Öğrenci** | Abdulkadir Demir |
-| **Öğrenci numarası** | `__________` |
+| **Öğrenci numarası** | 240541007 |
 | **Ders** | Nesne Tabanlı Programlama (YMH 219) |
 
 ## Ekran Görüntüleri
