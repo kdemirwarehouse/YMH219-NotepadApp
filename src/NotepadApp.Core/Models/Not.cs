@@ -12,6 +12,9 @@ public class Not
     public string Baslik { get; set; } = string.Empty;
     public string Icerik { get; set; } = string.Empty;
     public string Kategori { get; set; } = "Genel";
+
+    /// <summary>RichTextBox biçimlendirmesi (kalın/italik) için RTF içeriği. Boş olabilir.</summary>
+    public string? RtfIcerik { get; set; }
     public DateTime OlusturmaTarihi { get; set; }
     public DateTime DuzenlemeTarihi { get; set; }
 
@@ -29,11 +32,12 @@ public class Not
     }
 
     /// <summary>Başlık, içerik ve kategoriyi değiştirir, düzenleme tarihini günceller.</summary>
-    public void Guncelle(string baslik, string icerik, string? kategori)
+    public void Guncelle(string baslik, string icerik, string? kategori, string? rtfIcerik = null)
     {
         Baslik = BaslikDogrula(baslik);
         Icerik = icerik ?? string.Empty;
         Kategori = KategoriDuzenle(kategori);
+        RtfIcerik = rtfIcerik;
         DuzenlemeTarihi = DateTime.Now;
     }
 

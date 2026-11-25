@@ -18,18 +18,18 @@ public class NotDefteri
     public IReadOnlyList<Not> Notlar => _notlar;
     public int Sayi => _notlar.Count;
 
-    public Not Ekle(string baslik, string icerik, string? kategori = null)
+    public Not Ekle(string baslik, string icerik, string? kategori = null, string? rtfIcerik = null)
     {
-        var not = new Not(baslik, icerik, kategori);
+        var not = new Not(baslik, icerik, kategori) { RtfIcerik = rtfIcerik };
         _notlar.Add(not);
         DegistiBildir();
         return not;
     }
 
-    public void Guncelle(Guid id, string baslik, string icerik, string? kategori)
+    public void Guncelle(Guid id, string baslik, string icerik, string? kategori, string? rtfIcerik = null)
     {
         var not = Bul(id) ?? throw new KeyNotFoundException("Düzenlenecek not bulunamadı.");
-        not.Guncelle(baslik, icerik, kategori);
+        not.Guncelle(baslik, icerik, kategori, rtfIcerik);
         DegistiBildir();
     }
 
