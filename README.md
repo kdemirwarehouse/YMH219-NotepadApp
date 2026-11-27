@@ -87,6 +87,9 @@ Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --v
   - **XML serileştirme (JSON'a alternatif):** Dosya menüsünden tüm notlar `XmlSerializer` ile tek bir `.xml` arşivine
     (`<NotArsivi><Not>...`) dışa aktarılır ve geri içe aktarılır. İçe aktarmada aynı Id'li notlardan son düzenlenen kazanır;
     yeni / güncellenen / atlanan not sayıları gösterilir. Yedekleme ve başka bilgisayara taşıma için kullanılabilir.
+  - **Karanlık tema** (Görünüm menüsü, Ctrl+Shift+D): tüm kontroller, menüler (özel `ProfessionalColorTable`) ve
+    Windows 10/11 başlık çubuğu (`DwmSetWindowAttribute`, koyu mod) koyulaşır. Tema ve otomatik kaydetme tercihi
+    `%APPDATA%\YMH219-NotepadApp\ayarlar.json` dosyasında saklanır, sonraki açılışta hatırlanır.
   - **Not sabitleme** (Not menüsü, Ctrl+P): sabitlenen notlar 📌 ile listenin en üstünde kalır; sabitleme JSON'da saklanır
   - **Çok seviyeli geri al / yinele** (Düzen menüsü, Ctrl+Z / Ctrl+Y): düzenleyicinin RTF + imleç durumu, yazma
     0,6 sn durduğunda bir adım olarak kaydedilir; kalın/italik değişiklikleri ayrı adımdır. 200 adım tutulur, menüde
@@ -98,6 +101,7 @@ Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --v
 |---|---|
 | Ctrl+N | Yeni not |
 | Ctrl+S | Notu kaydet |
+| Ctrl+Shift+D | Karanlık / açık tema |
 | Ctrl+P | Seçili notu sabitle / sabitlemeyi kaldır |
 | Ctrl+Z / Ctrl+Y | Geri al / yinele (200 adım, biçimlendirme dahil) |
 | Ctrl+E | Seçili notu dışa aktar (.rtf / .html / .txt) |
@@ -115,6 +119,7 @@ YMH219-NotepadApp/
 │   │   ├── Models/Not.cs           Not sınıfı: başlık, içerik, kategori, tarihler, doğrulama
 │   │   └── Services/
 │   │       ├── NotDefteri.cs       List<Not> yönetimi: ekle, güncelle, sil, ara, filtrele
+│   │       ├── Ayarlar.cs          Tema / otomatik kaydetme tercihleri (ayarlar.json)
 │   │       ├── XmlNotAktarici.cs   XmlSerializer ile tüm notları XML arşivine aktarma / içe alma
 │   │       ├── GeriAlGecmisi.cs    Sınırlı kapasiteli genel geri al / yinele yığını
 │   │       ├── BicimliDisaAktarici.cs  .rtf ve .html dışa aktarma (küçük RTF → HTML ayrıştırıcısı)
@@ -124,7 +129,7 @@ YMH219-NotepadApp/
 │       ├── Program.cs              Giriş noktası, --veri parametresi
 │       ├── MainForm.cs             Olay yöneticileri ve kullanıcı etkileşimi
 │       └── MainForm.Designer.cs    Form kontrolleri
-├── tests/NotepadApp.Tests/         24 testlik konsol test çalıştırıcısı
+├── tests/NotepadApp.Tests/         25 testlik konsol test çalıştırıcısı
 └── docs/screenshots/               README ekran görüntüleri
 ```
 
@@ -134,4 +139,3 @@ Ayrıntılı açıklama için [KOD-REHBERI.md](KOD-REHBERI.md) dosyasına bakın
 
 ## Bilinen Sınırlamalar / Geliştirme Notları
 
-- Olası geliştirmeler: karanlık tema.

@@ -333,6 +333,17 @@ Test("XML arşivi: dışa aktar, geri oku ve birleştir", () =>
     Dogrula(hata, "Bozuk XML anlaşılır hata vermeli");
 });
 
+Test("Ayarlar kaydedilir, geri okunur; bozuk ayar dosyası varsayılana döner", () =>
+{
+    string yol = Path.Combine(geciciKlasor, "ayar", "ayarlar.json");
+    Dogrula(!Ayarlar.Yukle(yol).KaranlikTema && Ayarlar.Yukle(yol).OtomatikKaydet, "Varsayılan: açık tema, otomatik kaydet açık");
+    new Ayarlar { KaranlikTema = true, OtomatikKaydet = false }.Kaydet(yol);
+    var okunan = Ayarlar.Yukle(yol);
+    Dogrula(okunan.KaranlikTema && !okunan.OtomatikKaydet, "Kaydedilen ayarlar okunmalı");
+    File.WriteAllText(yol, "{ bozuk");
+    Dogrula(!Ayarlar.Yukle(yol).KaranlikTema, "Bozuk dosyada varsayılan ayarlar dönmeli");
+});
+
 Test("TXT dışa aktarma başlık, tarih ve içerik yazar", () =>
 {
     var not = new Not("Toplantı: 12/05", "Gündem maddeleri\n1) Bütçe");

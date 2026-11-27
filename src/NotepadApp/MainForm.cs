@@ -36,13 +36,75 @@ public partial class MainForm : Form
     private readonly TextBox txtEtiketler = new() { Name = "txtEtiketler", Width = 260, PlaceholderText = "etiketler: sınav, proje, acil" };
     private readonly ComboBox cmbFiltreEtiket = new() { Name = "cmbFiltreEtiket", Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
 
+    private readonly string _ayarYolu = Ayarlar.VarsayilanYol();
+    private Ayarlar _ayarlar = new();
+    private ToolStripMenuItem mnuKaranlikTema = null!;
+
     public MainForm(string veriDosyasi)
     {
         InitializeComponent();
         EtiketAlanlariniKur();
+        TemaMenusunuKur();
         _depo = new NotDeposu(veriDosyasi);
         _defter.Degisti += Defter_Degisti;
         GeriAlMenusunuKur();
+    }
+
+    // ---------------------------------------------------------------- Tema ve ayarlar
+
+    private void TemaMenusunuKur()
+    {
+        _ayarlar = Ayarlar.Yukle(_ayarYolu);
+        mnuOtomatikKaydet.Checked = _ayarlar.OtomatikKaydet;
+        mnuOtomatikKaydet.CheckedChanged += (_, _) => { _ayarlar.OtomatikKaydet = mnuOtomatikKaydet.Checked; _ayarlar.Kaydet(_ayarYolu); };
+
+        mnuKaranlikTema = new ToolStripMenuItem("&Karanlık Tema", null, (_, _) => TemaDegistir(!_ayarlar.KaranlikTema))
+        {
+            ShortcutKeys = Keys.Control | Keys.Shift | Keys.D,
+            Checked = _ayarlar.KaranlikTema
+        };
+        var mnuGorunum = new ToolStripMenuItem("&Görünüm");
+        mnuGorunum.DropDownItems.Add(mnuKaranlikTema);
+        menuStrip.Items.Add(mnuGorunum);
+        HandleCreated += (_, _) => { Tema.Uygula(this, _ayarlar.KaranlikTema); IcerikRenginiUygula(); };
+    }
+
+    /// <summary>
+    /// RichTextBox, RTF'deki "otomatik" yazı rengini tema rengi yerine sistem rengiyle çizer.
+    /// Bu yüzden metin yüklendikten / tema değiştikten sonra tüm metin tema rengine boyanır.
+    /// </summary>
+    private void IcerikRenginiUygula()
+    {
+        bool onceki = _arayuzGuncelleniyor;
+        _arayuzGuncelleniyor = true;
+        try
+        {
+            int bas = rtbIcerik.SelectionStart, uz = rtbIcerik.SelectionLength;
+            rtbIcerik.SelectAll();
+            rtbIcerik.SelectionColor = _ayarlar.KaranlikTema ? Tema.Karanlik.Yazi : SystemColors.WindowText;
+            rtbIcerik.Select(bas, uz);
+        }
+        finally { _arayuzGuncelleniyor = onceki; }
+    }
+
+    /// <summary>Kaydedilecek RTF: tema renginden bağımsız olsun diye geçici bir kopyada metin siyaha çevrilir.</summary>
+    private string TemadanBagimsizRtf()
+    {
+        using var kopya = new RichTextBox { Rtf = rtbIcerik.Rtf };
+        kopya.SelectAll();
+        kopya.SelectionColor = Color.Black;
+        return kopya.Rtf ?? string.Empty;
+    }
+
+    private void TemaDegistir(bool karanlik)
+    {
+        _ayarlar.KaranlikTema = karanlik;
+        mnuKaranlikTema.Checked = karanlik;
+        _ayarlar.Kaydet(_ayarYolu);
+        Tema.Uygula(this, karanlik);
+        IcerikRenginiUygula();
+        GecmisiSifirla();
+        DurumYaz(karanlik ? "Karanlık tema açıldı." : "Açık tema açıldı.");
     }
 
     // ---------------------------------------------------------------- Etiketler
@@ -403,6 +465,7 @@ public partial class MainForm : Form
             {
                 rtbIcerik.Text = not.Icerik;
             }
+            IcerikRenginiUygula();
             lblTarihler.Text = $"Oluşturulma: {not.OlusturmaTarihi:dd.MM.yyyy HH:mm}    " +
                                $"Son düzenleme: {not.DuzenlemeTarihi:dd.MM.yyyy HH:mm}";
             _duzenleyiciKirli = false;
@@ -486,7 +549,7 @@ public partial class MainForm : Form
 
         try
         {
-            string rtf = rtbIcerik.Rtf ?? string.Empty;
+            string rtf = TemadanBagimsizRtf();
             var etiketler = Not.EtiketleriAyristir(txtEtiketler.Text);
             Not not;
             if (_seciliId is Guid id && _defter.Bul(id) is not null)
