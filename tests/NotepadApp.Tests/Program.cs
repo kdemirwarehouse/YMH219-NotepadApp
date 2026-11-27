@@ -306,6 +306,33 @@ Test("Etiketler: ayrıştırma, tekilleştirme, filtreleme ve aramada kullanım"
     Dogrula(hata, "11 etiket reddedilmeli");
 });
 
+Test("XML arşivi: dışa aktar, geri oku ve birleştir", () =>
+{
+    var defter = new NotDefteri();
+    var a = defter.Ekle("Ödev <1>", "İçerik & \"tırnak\"", "Okul", etiketler: new[] { "sınav" });
+    defter.SabitlemeDegistir(a.Id);
+    string yol = Path.Combine(geciciKlasor, "arsiv.xml");
+    XmlNotAktarici.DisaAktar(defter.Notlar, yol);
+    string xml = File.ReadAllText(yol);
+    Dogrula(xml.Contains("<NotArsivi") && xml.Contains("Ödev &lt;1&gt;"), "XML kök elemanı ve kaçışlar doğru olmalı");
+
+    var okunan = XmlNotAktarici.IceAktar(yol);
+    Dogrula(okunan.Count == 1 && okunan[0].Id == a.Id && okunan[0].Sabitlenmis && okunan[0].Etiketler.SequenceEqual(new[] { "sınav" }),
+            "Id, sabitleme ve etiketler korunmalı");
+
+    var hedef = new NotDefteri();
+    hedef.Ekle("Başka not", "");
+    var s1 = hedef.IceAktar(okunan);
+    Dogrula(s1 == (1, 0, 0), "İlk içe aktarmada 1 yeni not");
+    var s2 = hedef.IceAktar(XmlNotAktarici.IceAktar(yol));
+    Dogrula(s2 == (0, 0, 1) && hedef.Sayi == 2, "Aynı arşiv tekrar alınınca atlanmalı");
+
+    File.WriteAllText(Path.Combine(geciciKlasor, "bozuk.xml"), "<NotArsivi><Not>");
+    bool hata = false;
+    try { XmlNotAktarici.IceAktar(Path.Combine(geciciKlasor, "bozuk.xml")); } catch (Exception ex) when (ex is InvalidDataException or System.Xml.XmlException) { hata = true; }
+    Dogrula(hata, "Bozuk XML anlaşılır hata vermeli");
+});
+
 Test("TXT dışa aktarma başlık, tarih ve içerik yazar", () =>
 {
     var not = new Not("Toplantı: 12/05", "Gündem maddeleri\n1) Bütçe");

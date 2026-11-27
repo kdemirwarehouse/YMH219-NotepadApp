@@ -105,6 +105,31 @@ public class NotDefteri
                .OrderBy(k => k)
                .ToList();
 
+    /// <summary>
+    /// Dışarıdan (ör. XML arşivinden) gelen notları birleştirir: yeni Id'ler eklenir; aynı Id'li not varsa
+    /// son düzenleme tarihi daha yeni olan kazanır.
+    /// </summary>
+    public (int Eklenen, int Guncellenen, int Atlanan) IceAktar(IEnumerable<Not> gelenler)
+    {
+        int eklenen = 0, guncellenen = 0, atlanan = 0;
+        foreach (var gelen in gelenler)
+        {
+            gelen.Etiketler ??= new();
+            int i = _notlar.FindIndex(n => n.Id == gelen.Id);
+            if (i < 0) { _notlar.Add(gelen); eklenen++; }
+            else if (gelen.DuzenlemeTarihi > _notlar[i].DuzenlemeTarihi)
+            {
+                gelen.Surum = Math.Max(gelen.Surum, _notlar[i].Surum) + 1;
+                _notlar[i] = gelen;
+                guncellenen++;
+            }
+            else atlanan++;
+        }
+        if (eklenen + guncellenen > 0)
+            DegistiBildir();
+        return (eklenen, guncellenen, atlanan);
+    }
+
     /// <summary>Tüm notlardaki etiketler (tekil, alfabetik).</summary>
     public List<string> Etiketler() =>
         _notlar.SelectMany(n => n.Etiketler)

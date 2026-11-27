@@ -81,6 +81,13 @@ public partial class MainForm : Form
         mnuDuzen.DropDownOpening += (_, _) => GeriAlMenusunuGuncelle();
         menuStrip.Items.Insert(menuStrip.Items.IndexOf(mnuBicim), mnuDuzen);
 
+        var mnuXmlDisa = new ToolStripMenuItem("Tüm Notları &XML Olarak Dışa Aktar...", null, MnuXmlDisaAktar_Click);
+        var mnuXmlIce = new ToolStripMenuItem("XML'den &İçe Aktar...", null, MnuXmlIceAktar_Click);
+        int konum = mnuDosya.DropDownItems.IndexOf(mnuAyrac);
+        mnuDosya.DropDownItems.Insert(konum, new ToolStripSeparator());
+        mnuDosya.DropDownItems.Insert(konum + 1, mnuXmlDisa);
+        mnuDosya.DropDownItems.Insert(konum + 2, mnuXmlIce);
+
         mnuSabitle = new ToolStripMenuItem("Notu &Sabitle", null, MnuSabitle_Click) { ShortcutKeys = Keys.Control | Keys.P };
         mnuNot.DropDownItems.Insert(0, mnuSabitle);
         mnuNot.DropDownOpening += (_, _) =>
@@ -597,6 +604,45 @@ public partial class MainForm : Form
         bool sabit = _defter.SabitlemeDegistir(id);
         ListeyiYenile();
         DurumYaz(sabit ? $"Sabitlendi: {not.Baslik}" : $"Sabitleme kaldırıldı: {not.Baslik}");
+    }
+
+    private void MnuXmlDisaAktar_Click(object? sender, EventArgs e)
+    {
+        if (_defter.Sayi == 0) { DurumYaz("Dışa aktarılacak not yok."); return; }
+        using var dialog = new SaveFileDialog
+        {
+            Title = "Tüm notları XML olarak dışa aktar",
+            Filter = "XML not arşivi (*.xml)|*.xml",
+            FileName = $"notlar-{DateTime.Now:yyyyMMdd-HHmm}.xml",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        try
+        {
+            XmlNotAktarici.DisaAktar(_defter.Notlar, dialog.FileName);
+            DurumYaz($"{_defter.Sayi} not XML olarak dışa aktarıldı: {dialog.FileName}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, $"Dosya yazılamadı:\n{ex.Message}", "XML dışa aktarma", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void MnuXmlIceAktar_Click(object? sender, EventArgs e)
+    {
+        if (!KaydedilmemisDegisiklikleriSor()) return;
+        using var dialog = new OpenFileDialog { Title = "XML not arşivini içe aktar", Filter = "XML not arşivi (*.xml)|*.xml" };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        try
+        {
+            var (eklenen, guncellenen, atlanan) = _defter.IceAktar(XmlNotAktarici.IceAktar(dialog.FileName));
+            ListeyiYenile();
+            DurumYaz($"İçe aktarıldı: {eklenen} yeni, {guncellenen} güncellenen, {atlanan} atlanan (zaten güncel) not.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Xml.XmlException)
+        {
+            MessageBox.Show(this, $"XML dosyası okunamadı:\n{ex.Message}", "XML içe aktarma", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private void MnuYenidenYukle_Click(object? sender, EventArgs e)

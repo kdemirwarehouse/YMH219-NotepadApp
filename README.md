@@ -84,6 +84,9 @@ Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --v
   - **Etiketler (çoklu kategori):** her notun tek kategorisine ek olarak en fazla 10 etiketi olabilir
     (`sınav, proje, acil` — virgül, noktalı virgül veya # ile ayrılır). Listede `#etiket` olarak görünür, filtre panelindeki
     **Etiket** kutusuyla süzülür ve aramada da (`#proj`) eşleşir. Kategori ve etiket filtreleri birlikte kullanılabilir.
+  - **XML serileştirme (JSON'a alternatif):** Dosya menüsünden tüm notlar `XmlSerializer` ile tek bir `.xml` arşivine
+    (`<NotArsivi><Not>...`) dışa aktarılır ve geri içe aktarılır. İçe aktarmada aynı Id'li notlardan son düzenlenen kazanır;
+    yeni / güncellenen / atlanan not sayıları gösterilir. Yedekleme ve başka bilgisayara taşıma için kullanılabilir.
   - **Not sabitleme** (Not menüsü, Ctrl+P): sabitlenen notlar 📌 ile listenin en üstünde kalır; sabitleme JSON'da saklanır
   - **Çok seviyeli geri al / yinele** (Düzen menüsü, Ctrl+Z / Ctrl+Y): düzenleyicinin RTF + imleç durumu, yazma
     0,6 sn durduğunda bir adım olarak kaydedilir; kalın/italik değişiklikleri ayrı adımdır. 200 adım tutulur, menüde
@@ -112,6 +115,7 @@ YMH219-NotepadApp/
 │   │   ├── Models/Not.cs           Not sınıfı: başlık, içerik, kategori, tarihler, doğrulama
 │   │   └── Services/
 │   │       ├── NotDefteri.cs       List<Not> yönetimi: ekle, güncelle, sil, ara, filtrele
+│   │       ├── XmlNotAktarici.cs   XmlSerializer ile tüm notları XML arşivine aktarma / içe alma
 │   │       ├── GeriAlGecmisi.cs    Sınırlı kapasiteli genel geri al / yinele yığını
 │   │       ├── BicimliDisaAktarici.cs  .rtf ve .html dışa aktarma (küçük RTF → HTML ayrıştırıcısı)
 │   │       ├── NotDeposu.cs        Not başına JSON dosyası, artımlı kayıt, eski biçimden taşıma, bozuk dosya yönetimi
@@ -120,7 +124,7 @@ YMH219-NotepadApp/
 │       ├── Program.cs              Giriş noktası, --veri parametresi
 │       ├── MainForm.cs             Olay yöneticileri ve kullanıcı etkileşimi
 │       └── MainForm.Designer.cs    Form kontrolleri
-├── tests/NotepadApp.Tests/         23 testlik konsol test çalıştırıcısı
+├── tests/NotepadApp.Tests/         24 testlik konsol test çalıştırıcısı
 └── docs/screenshots/               README ekran görüntüleri
 ```
 
@@ -130,4 +134,4 @@ Ayrıntılı açıklama için [KOD-REHBERI.md](KOD-REHBERI.md) dosyasına bakın
 
 ## Bilinen Sınırlamalar / Geliştirme Notları
 
-- Olası geliştirmeler: XML'e alternatif serileştirme, karanlık tema.
+- Olası geliştirmeler: karanlık tema.
