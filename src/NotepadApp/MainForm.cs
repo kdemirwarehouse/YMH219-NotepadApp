@@ -21,11 +21,94 @@ public partial class MainForm : Form
     private bool _kendiYazmam;                     // Kendi kaydımızın tetiklediği izleyici olaylarını yok say
     private DateTime _sonKendiYazma;               // İzleyici olayları gecikmeli gelir: kendi yazmamızdan sonraki 1,5 sn yok sayılır
 
+    // ---- Geri al / yinele: düzenleyicinin RTF + imleç anlık görüntüleri
+    private readonly record struct EditorDurumu(string Rtf, int Imlec);
+    private sealed class RtfKarsilastirici : IEqualityComparer<EditorDurumu>
+    {
+        public bool Equals(EditorDurumu a, EditorDurumu b) => a.Rtf == b.Rtf;
+        public int GetHashCode(EditorDurumu d) => d.Rtf.GetHashCode();
+    }
+    private readonly GeriAlGecmisi<EditorDurumu> _gecmis = new(200, new RtfKarsilastirici());
+    private readonly System.Windows.Forms.Timer _anlikGoruntuZamanlayici = new() { Interval = 600 };
+    private bool _geriAliniyor;
+    private ToolStripMenuItem mnuGeriAl = null!, mnuYinele = null!;
+
     public MainForm(string veriDosyasi)
     {
         InitializeComponent();
         _depo = new NotDeposu(veriDosyasi);
         _defter.Degisti += Defter_Degisti;
+        GeriAlMenusunuKur();
+    }
+
+    // ---------------------------------------------------------------- Geri al / yinele
+
+    /// <summary>
+    /// Düzen menüsü: Ctrl+Z / Ctrl+Y menü kısayolları RichTextBox'ın kendi (tek seviyeli, biçimlendirmede tutarsız)
+    /// geri almasından önce işlenir; 200 adımlık kendi geçmişimiz kullanılır.
+    /// </summary>
+    private void GeriAlMenusunuKur()
+    {
+        mnuGeriAl = new ToolStripMenuItem("&Geri Al", null, (_, _) => GeriAlYinele(geriAl: true)) { ShortcutKeys = Keys.Control | Keys.Z };
+        mnuYinele = new ToolStripMenuItem("&Yinele", null, (_, _) => GeriAlYinele(geriAl: false)) { ShortcutKeys = Keys.Control | Keys.Y };
+        var mnuDuzen = new ToolStripMenuItem("D&üzen");
+        mnuDuzen.DropDownItems.AddRange(new ToolStripItem[] { mnuGeriAl, mnuYinele });
+        mnuDuzen.DropDownOpening += (_, _) => GeriAlMenusunuGuncelle();
+        menuStrip.Items.Insert(menuStrip.Items.IndexOf(mnuBicim), mnuDuzen);
+
+        rtbIcerik.TextChanged += (_, _) =>
+        {
+            if (_arayuzGuncelleniyor || _geriAliniyor) return;
+            _anlikGoruntuZamanlayici.Stop();
+            _anlikGoruntuZamanlayici.Start();   // yazma durduktan 0,6 sn sonra tek adım olarak kaydet
+        };
+        _anlikGoruntuZamanlayici.Tick += (_, _) => AnlikGoruntuAl();
+        GeriAlMenusunuGuncelle();
+    }
+
+    private EditorDurumu SimdikiDurum() => new(rtbIcerik.Rtf ?? "", rtbIcerik.SelectionStart);
+
+    private void AnlikGoruntuAl()
+    {
+        _anlikGoruntuZamanlayici.Stop();
+        _gecmis.Kaydet(SimdikiDurum());
+        GeriAlMenusunuGuncelle();
+    }
+
+    private void GecmisiSifirla()
+    {
+        _anlikGoruntuZamanlayici.Stop();
+        _gecmis.Sifirla(SimdikiDurum());
+        GeriAlMenusunuGuncelle();
+    }
+
+    private void GeriAlYinele(bool geriAl)
+    {
+        if (_anlikGoruntuZamanlayici.Enabled)
+            AnlikGoruntuAl();   // bekleyen yazma önce bir adım olsun
+        if (geriAl ? !_gecmis.GeriAlinabilir : !_gecmis.Yinelenebilir)
+            return;
+
+        var durum = geriAl ? _gecmis.GeriAl() : _gecmis.Yinele();
+        _geriAliniyor = true;
+        try
+        {
+            rtbIcerik.Rtf = durum.Rtf;
+            rtbIcerik.Select(Math.Min(durum.Imlec, rtbIcerik.TextLength), 0);
+        }
+        finally { _geriAliniyor = false; }
+        rtbIcerik.Focus();
+        GeriAlMenusunuGuncelle();
+        DurumYaz(geriAl ? $"Geri alındı ({_gecmis.GeriAlAdimSayisi} adım daha geri alınabilir)."
+                        : $"Yinelendi ({_gecmis.YineleAdimSayisi} adım daha yinelenebilir).");
+    }
+
+    private void GeriAlMenusunuGuncelle()
+    {
+        mnuGeriAl.Enabled = _gecmis.GeriAlinabilir || _anlikGoruntuZamanlayici.Enabled;
+        mnuYinele.Enabled = _gecmis.Yinelenebilir;
+        mnuGeriAl.Text = $"&Geri Al ({_gecmis.GeriAlAdimSayisi})";
+        mnuYinele.Text = $"&Yinele ({_gecmis.YineleAdimSayisi})";
     }
 
     // ---------------------------------------------------------------- Yükleme / Kaydetme
@@ -279,6 +362,7 @@ public partial class MainForm : Form
         {
             _arayuzGuncelleniyor = false;
         }
+        GecmisiSifirla();
     }
 
     private void YeniNotHazirla()
@@ -299,6 +383,7 @@ public partial class MainForm : Form
         {
             _arayuzGuncelleniyor = false;
         }
+        GecmisiSifirla();
         txtBaslik.Focus();
     }
 
@@ -474,8 +559,11 @@ public partial class MainForm : Form
 
     private void SecimStiliDegistir(FontStyle stil)
     {
+        if (_anlikGoruntuZamanlayici.Enabled)
+            AnlikGoruntuAl();
         var font = rtbIcerik.SelectionFont ?? rtbIcerik.Font;
         rtbIcerik.SelectionFont = new Font(font, font.Style ^ stil);
+        AnlikGoruntuAl();   // biçim değişikliği ayrı bir geri alma adımıdır
         rtbIcerik.Focus();
     }
 

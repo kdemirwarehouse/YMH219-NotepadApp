@@ -81,6 +81,9 @@ Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --v
   - **Kategori** desteği ve kategoriye göre filtreleme
   - Her işlemden sonra **otomatik kaydetme** (Not menüsünden kapatılabilir)
   - RichTextBox ile **kalın / italik** biçimlendirme (Ctrl+B, Ctrl+I); biçim RTF olarak saklanır
+  - **Çok seviyeli geri al / yinele** (Düzen menüsü, Ctrl+Z / Ctrl+Y): düzenleyicinin RTF + imleç durumu, yazma
+    0,6 sn durduğunda bir adım olarak kaydedilir; kalın/italik değişiklikleri ayrı adımdır. 200 adım tutulur, menüde
+    kalan adım sayısı görünür. Başka bir not açıldığında geçmiş o not için sıfırlanır.
 
 ### Klavye kısayolları
 
@@ -88,6 +91,7 @@ Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --v
 |---|---|
 | Ctrl+N | Yeni not |
 | Ctrl+S | Notu kaydet |
+| Ctrl+Z / Ctrl+Y | Geri al / yinele (200 adım, biçimlendirme dahil) |
 | Ctrl+E | Seçili notu dışa aktar (.rtf / .html / .txt) |
 | Ctrl+Delete | Seçili notu sil |
 | F5 | Notları dosyadan yeniden yükle |
@@ -103,6 +107,7 @@ YMH219-NotepadApp/
 │   │   ├── Models/Not.cs           Not sınıfı: başlık, içerik, kategori, tarihler, doğrulama
 │   │   └── Services/
 │   │       ├── NotDefteri.cs       List<Not> yönetimi: ekle, güncelle, sil, ara, filtrele
+│   │       ├── GeriAlGecmisi.cs    Sınırlı kapasiteli genel geri al / yinele yığını
 │   │       ├── BicimliDisaAktarici.cs  .rtf ve .html dışa aktarma (küçük RTF → HTML ayrıştırıcısı)
 │   │       ├── NotDeposu.cs        Not başına JSON dosyası, artımlı kayıt, eski biçimden taşıma, bozuk dosya yönetimi
 │   │       └── TxtDisaAktarici.cs  Notu .txt dosyasına yazma (StreamWriter)
@@ -110,7 +115,7 @@ YMH219-NotepadApp/
 │       ├── Program.cs              Giriş noktası, --veri parametresi
 │       ├── MainForm.cs             Olay yöneticileri ve kullanıcı etkileşimi
 │       └── MainForm.Designer.cs    Form kontrolleri
-├── tests/NotepadApp.Tests/         19 testlik konsol test çalıştırıcısı
+├── tests/NotepadApp.Tests/         21 testlik konsol test çalıştırıcısı
 └── docs/screenshots/               README ekran görüntüleri
 ```
 
@@ -120,5 +125,4 @@ Ayrıntılı açıklama için [KOD-REHBERI.md](KOD-REHBERI.md) dosyasına bakın
 
 ## Bilinen Sınırlamalar / Geliştirme Notları
 
-- Geri al / yinele geçmişi yalnızca RichTextBox'ın kendi geri alma özelliğiyle sınırlıdır.
 - Olası geliştirmeler: not sabitleme, etiket (çoklu kategori), XML'e alternatif serileştirme, karanlık tema.

@@ -253,6 +253,28 @@ Test("RTF ve HTML dışa aktarma dosyaları oluşturulur", () =>
     Dogrula(html.Contains("<h1>Biçimli not</h1>") && html.Contains("düz içerik İğ"), "HTML başlık ve içerik içermeli");
 });
 
+Test("Geri al / yinele: çok seviyeli, yeni kayıt yineleyi temizler", () =>
+{
+    var g = new GeriAlGecmisi<string>(kapasite: 10);
+    g.Sifirla("");
+    g.Kaydet("a"); g.Kaydet("ab"); g.Kaydet("abc");
+    Dogrula(!g.Kaydet("abc"), "Aynı durum ikinci kez kaydedilmemeli");
+    Dogrula(g.GeriAl() == "ab" && g.GeriAl() == "a", "İki adım geri alınmalı");
+    Dogrula(g.Yinele() == "ab" && g.YineleAdimSayisi == 1, "Bir adım yinelenmeli");
+    g.Kaydet("abX");
+    Dogrula(!g.Yinelenebilir, "Yeni kayıt yinele yığınını temizlemeli");
+    Dogrula(g.GeriAl() == "ab" && g.GeriAl() == "a" && g.GeriAl() == "" && g.GeriAl() is null, "Başlangıca kadar geri alınmalı");
+});
+
+Test("Geri al geçmişi kapasiteyi aşınca en eski adımı düşürür", () =>
+{
+    var g = new GeriAlGecmisi<int>(kapasite: 3);
+    g.Sifirla(0);
+    for (int i = 1; i <= 5; i++) g.Kaydet(i);
+    Dogrula(g.GeriAlAdimSayisi == 2, $"Kapasite 3 iken 2 geri alma adımı kalmalı, {g.GeriAlAdimSayisi}");
+    Dogrula(g.GeriAl() == 4 && g.GeriAl() == 3 && !g.GeriAlinabilir, "En eski adımlar düşmüş olmalı");
+});
+
 Test("TXT dışa aktarma başlık, tarih ve içerik yazar", () =>
 {
     var not = new Not("Toplantı: 12/05", "Gündem maddeleri\n1) Bütçe");
