@@ -31,7 +31,7 @@ public partial class MainForm : Form
     private readonly GeriAlGecmisi<EditorDurumu> _gecmis = new(200, new RtfKarsilastirici());
     private readonly System.Windows.Forms.Timer _anlikGoruntuZamanlayici = new() { Interval = 600 };
     private bool _geriAliniyor;
-    private ToolStripMenuItem mnuGeriAl = null!, mnuYinele = null!;
+    private ToolStripMenuItem mnuGeriAl = null!, mnuYinele = null!, mnuSabitle = null!;
 
     public MainForm(string veriDosyasi)
     {
@@ -55,6 +55,15 @@ public partial class MainForm : Form
         mnuDuzen.DropDownItems.AddRange(new ToolStripItem[] { mnuGeriAl, mnuYinele });
         mnuDuzen.DropDownOpening += (_, _) => GeriAlMenusunuGuncelle();
         menuStrip.Items.Insert(menuStrip.Items.IndexOf(mnuBicim), mnuDuzen);
+
+        mnuSabitle = new ToolStripMenuItem("Notu &Sabitle", null, MnuSabitle_Click) { ShortcutKeys = Keys.Control | Keys.P };
+        mnuNot.DropDownItems.Insert(0, mnuSabitle);
+        mnuNot.DropDownOpening += (_, _) =>
+        {
+            var not = _seciliId is Guid id ? _defter.Bul(id) : null;
+            mnuSabitle.Enabled = not is not null;
+            mnuSabitle.Text = not?.Sabitlenmis == true ? "&Sabitlemeyi Kaldır" : "Notu &Sabitle";
+        };
 
         rtbIcerik.TextChanged += (_, _) =>
         {
@@ -539,6 +548,19 @@ public partial class MainForm : Form
             MessageBox.Show(this, $"Dosya yazılamadı:\n{ex.Message}", "Dışa aktarma hatası",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
+
+    /// <summary>Seçili notu sabitler / sabitlemeyi kaldırır; sabit notlar listenin en üstünde 📌 ile görünür.</summary>
+    private void MnuSabitle_Click(object? sender, EventArgs e)
+    {
+        if (_seciliId is not Guid id || _defter.Bul(id) is not Not not)
+        {
+            DurumYaz("Sabitlemek için listeden bir not seçin.");
+            return;
+        }
+        bool sabit = _defter.SabitlemeDegistir(id);
+        ListeyiYenile();
+        DurumYaz(sabit ? $"Sabitlendi: {not.Baslik}" : $"Sabitleme kaldırıldı: {not.Baslik}");
     }
 
     private void MnuYenidenYukle_Click(object? sender, EventArgs e)

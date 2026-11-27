@@ -33,6 +33,16 @@ public class NotDefteri
         DegistiBildir();
     }
 
+    /// <summary>Notu sabitler veya sabitlemesini kaldırır; yeni durumu döndürür.</summary>
+    public bool SabitlemeDegistir(Guid id)
+    {
+        var not = Bul(id) ?? throw new KeyNotFoundException("Not bulunamadı.");
+        not.Sabitlenmis = !not.Sabitlenmis;
+        not.Surum++;
+        DegistiBildir();
+        return not.Sabitlenmis;
+    }
+
     public bool Sil(Guid id)
     {
         int silinen = _notlar.RemoveAll(n => n.Id == id);
@@ -62,7 +72,7 @@ public class NotDefteri
 
     /// <summary>
     /// Arama metni ve kategoriye göre süzülmüş liste döner.
-    /// Son düzenlenen not en üstte yer alır.
+    /// Sabitlenmiş notlar en üstte, kendi aralarında ve diğerleri son düzenlenme tarihine göre sıralanır.
     /// </summary>
     public List<Not> Filtrele(string? aranan, string? kategori)
     {
@@ -74,7 +84,9 @@ public class NotDefteri
         if (!string.IsNullOrWhiteSpace(kategori) && kategori != TumKategoriler)
             sorgu = sorgu.Where(n => string.Equals(n.Kategori, kategori, StringComparison.CurrentCultureIgnoreCase));
 
-        return sorgu.OrderByDescending(n => n.DuzenlemeTarihi).ToList();
+        return sorgu.OrderByDescending(n => n.Sabitlenmis)
+                    .ThenByDescending(n => n.DuzenlemeTarihi)
+                    .ToList();
     }
 
     public List<string> Kategoriler() =>

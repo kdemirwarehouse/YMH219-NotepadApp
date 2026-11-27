@@ -275,6 +275,19 @@ Test("Geri al geçmişi kapasiteyi aşınca en eski adımı düşürür", () =>
     Dogrula(g.GeriAl() == 4 && g.GeriAl() == 3 && !g.GeriAlinabilir, "En eski adımlar düşmüş olmalı");
 });
 
+Test("Sabitlenen not listenin en üstünde kalır", () =>
+{
+    var defter = new NotDefteri();
+    var eski = defter.Ekle("Eski not", "");
+    Thread.Sleep(15);
+    defter.Ekle("Yeni not", "");
+    Dogrula(defter.Filtrele(null, null)[0].Baslik == "Yeni not", "Sabitleme yokken en yeni üstte olmalı");
+    Dogrula(defter.SabitlemeDegistir(eski.Id), "Sabitleme true döndürmeli");
+    Dogrula(defter.Filtrele(null, null)[0].Baslik == "Eski not", "Sabit not en üstte olmalı");
+    Dogrula(eski.ToString().StartsWith("📌"), "Listede raptiye simgesi görünmeli");
+    Dogrula(!defter.SabitlemeDegistir(eski.Id) && defter.Filtrele(null, null)[0].Baslik == "Yeni not", "Kaldırınca sıra normale dönmeli");
+});
+
 Test("TXT dışa aktarma başlık, tarih ve içerik yazar", () =>
 {
     var not = new Not("Toplantı: 12/05", "Gündem maddeleri\n1) Bütçe");

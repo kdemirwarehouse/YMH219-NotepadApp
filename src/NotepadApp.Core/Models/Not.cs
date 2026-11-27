@@ -22,6 +22,9 @@ public class Not
     /// pencerenin bildiğinden farklıysa kaydetme çakışma olarak bildirilir (iyimser eşzamanlılık).
     /// </summary>
     public int Surum { get; set; }
+
+    /// <summary>Sabitlenen notlar listede her zaman en üstte gösterilir.</summary>
+    public bool Sabitlenmis { get; set; }
     public DateTime DuzenlemeTarihi { get; set; }
 
     public Not()
@@ -59,7 +62,7 @@ public class Not
     }
 
     /// <summary>ListBox içinde görünen kısa metin.</summary>
-    public override string ToString() => $"{Baslik}   ({DuzenlemeTarihi:dd.MM.yyyy HH:mm})";
+    public override string ToString() => $"{(Sabitlenmis ? "📌 " : "")}{Baslik}   ({DuzenlemeTarihi:dd.MM.yyyy HH:mm})";
 
     private static string BaslikDogrula(string baslik)
     {
