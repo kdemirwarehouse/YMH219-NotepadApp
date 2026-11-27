@@ -50,7 +50,7 @@ dotnet run --project src/NotepadApp
 dotnet run --project tests/NotepadApp.Tests
 ```
 
-Notlar varsayılan olarak `%APPDATA%\YMH219-NotepadApp\notlar.json` dosyasında saklanır.
+Notlar varsayılan olarak `%APPDATA%\YMH219-NotepadApp\notlar\` klasöründe, **her not ayrı bir `<Id>.json` dosyasında** saklanır.
 Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --veri C:\deneme\notlar.json`
 
 ## Temel Özellikler
@@ -58,10 +58,13 @@ Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --v
 - **Not ekleme / listeleme / düzenleme / silme** — başlık, kategori ve içerikten oluşan notlar
 - **Oluşturma ve son düzenleme tarihi** her not için tutulur ve düzenleyicide gösterilir
 - **JSON serileştirme** ile kaydetme; uygulama açılışında **otomatik geri yükleme**
+- **Artımlı (incremental) kayıt:** her not ayrı dosyadadır; kaydetmede yalnızca içeriği değişen notların dosyası yeniden
+  yazılır, silinen notun dosyası kaldırılır (durum çubuğunda "x dosya yazıldı, y silindi"). Yazma, geçici dosya + taşıma ile
+  atomiktir. Eski sürümün tek dosyalı `notlar.json`'ı ilk açılışta klasöre taşınır ve `notlar.json.eski` olarak saklanır.
 - **.txt dışa aktarma** — seçili not; başlık, kategori ve tarihlerle birlikte düz metin olarak kaydedilir
 - **Hata yönetimi**
   - Dosya yoksa boş liste ile başlanır (ilk açılış)
-  - Dosya boş veya bozuksa (geçersiz JSON) bozuk dosyanın `.bak` yedeği alınır ve kullanıcı uyarılır
+  - Bir not dosyası bozuksa (geçersiz JSON) yalnızca o dosya `.bak` olarak yedeklenir, diğer notlar yüklenir ve kullanıcı uyarılır
   - Okuma/yazma izni hatalarında uygulama kapanmaz, kullanıcıya mesaj gösterilir
   - Kaydetme önce `.tmp` dosyasına yapılır, sonra asıl dosyanın yerine taşınır; yazma yarıda kesilirse eski notlar bozulmaz
 - **Kaydedilmemiş değişiklik uyarısı** — başka nota geçerken, yeni not açarken ve çıkışta sorulur;
@@ -93,13 +96,13 @@ YMH219-NotepadApp/
 │   │   ├── Models/Not.cs           Not sınıfı: başlık, içerik, kategori, tarihler, doğrulama
 │   │   └── Services/
 │   │       ├── NotDefteri.cs       List<Not> yönetimi: ekle, güncelle, sil, ara, filtrele
-│   │       ├── NotDeposu.cs        JSON kaydet / yükle, bozuk-eksik dosya yönetimi
+│   │       ├── NotDeposu.cs        Not başına JSON dosyası, artımlı kayıt, eski biçimden taşıma, bozuk dosya yönetimi
 │   │       └── TxtDisaAktarici.cs  Notu .txt dosyasına yazma (StreamWriter)
 │   └── NotepadApp/                 Windows Forms uygulaması
 │       ├── Program.cs              Giriş noktası, --veri parametresi
 │       ├── MainForm.cs             Olay yöneticileri ve kullanıcı etkileşimi
 │       └── MainForm.Designer.cs    Form kontrolleri
-├── tests/NotepadApp.Tests/         12 testlik konsol test çalıştırıcısı
+├── tests/NotepadApp.Tests/         15 testlik konsol test çalıştırıcısı
 └── docs/screenshots/               README ekran görüntüleri
 ```
 
