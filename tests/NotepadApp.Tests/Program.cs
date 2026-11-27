@@ -229,6 +229,30 @@ Test("Klasördeki bozuk not dosyası yedeklenir, diğerleri yüklenir", () =>
     Dogrula(Directory.GetFiles(depo.KlasorYolu, "*.bak").Length == 1, "Bozuk dosya .bak yapılmalı");
 });
 
+Test("RTF'den HTML: kalın, italik, altı çizili ve Türkçe karakterler korunur", () =>
+{
+    string rtf = @"{\rtf1\ansi\ansicpg1254\deff0{\fonttbl{\f0\fnil\fcharset162 Segoe UI;}}" +
+                 @"\f0\fs22 Normal \b kal\'fdn\b0  ve \i italik \i0 ve \ul alt\ul0 .\par " +
+                 @"\u350?eker <etiket>\par}";
+    string html = BicimliDisaAktarici.RtfdenHtml(rtf);
+    Dogrula(html.Contains("<b>kalın</b>"), "Kalın ve \\'fd (ı) korunmalı: " + html);
+    Dogrula(html.Contains("<i>italik </i>") && html.Contains("<u>alt</u>"), "İtalik ve altı çizili korunmalı: " + html);
+    Dogrula(html.Contains("Şeker") && html.Contains("&lt;etiket&gt;"), "Unicode ve HTML kaçışları doğru olmalı: " + html);
+    Dogrula(!html.Contains("Segoe UI"), "Font tablosu metne karışmamalı");
+});
+
+Test("RTF ve HTML dışa aktarma dosyaları oluşturulur", () =>
+{
+    var not = new Not("Biçimli not", "düz içerik İğ");
+    string rtfYolu = Path.Combine(geciciKlasor, "not.rtf"), htmlYolu = Path.Combine(geciciKlasor, "not.html");
+    BicimliDisaAktarici.RtfOlarakAktar(not, rtfYolu);
+    BicimliDisaAktarici.HtmlOlarakAktar(not, htmlYolu);
+    Dogrula(File.ReadAllText(rtfYolu).StartsWith(@"{\rtf1"), "RTF başlığı olmalı");
+    Dogrula(File.ReadAllText(rtfYolu).Contains(@"\u304?"), "İ harfi \\u304 olarak kaçışlanmalı");
+    string html = File.ReadAllText(htmlYolu);
+    Dogrula(html.Contains("<h1>Biçimli not</h1>") && html.Contains("düz içerik İğ"), "HTML başlık ve içerik içermeli");
+});
+
 Test("TXT dışa aktarma başlık, tarih ve içerik yazar", () =>
 {
     var not = new Not("Toplantı: 12/05", "Gündem maddeleri\n1) Bütçe");

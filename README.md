@@ -65,7 +65,10 @@ Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --v
   açıksa ve aynı not ikisinde de değiştirilirse, ikinci kaydeden **çakışma** penceresi görür: *benim sürümüm*,
   *diskteki sürüm* veya *ikisini de tut (kopya)*. Başka pencerenin eklediği notlar asla silinmez. Not klasörü
   `FileSystemWatcher` ile izlenir; bu pencerede kaydedilmemiş değişiklik yoksa diğer pencerenin kaydettikleri otomatik yüklenir.
-- **.txt dışa aktarma** — seçili not; başlık, kategori ve tarihlerle birlikte düz metin olarak kaydedilir
+- **Dışa aktarma** — seçili not üç biçimde kaydedilebilir:
+  - **.rtf** — kalın/italik/altı çizili biçimlendirme korunur (Word, WordPad)
+  - **.html** — biçimlendirme `<b>`, `<i>`, `<u>` etiketlerine çevrilir (küçük bir RTF ayrıştırıcısıyla; Türkçe karakterler korunur)
+  - **.txt** — başlık, kategori ve tarihlerle birlikte düz metin
 - **Hata yönetimi**
   - Dosya yoksa boş liste ile başlanır (ilk açılış)
   - Bir not dosyası bozuksa (geçersiz JSON) yalnızca o dosya `.bak` olarak yedeklenir, diğer notlar yüklenir ve kullanıcı uyarılır
@@ -85,7 +88,7 @@ Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --v
 |---|---|
 | Ctrl+N | Yeni not |
 | Ctrl+S | Notu kaydet |
-| Ctrl+E | Seçili notu .txt olarak dışa aktar |
+| Ctrl+E | Seçili notu dışa aktar (.rtf / .html / .txt) |
 | Ctrl+Delete | Seçili notu sil |
 | F5 | Notları dosyadan yeniden yükle |
 | Ctrl+B / Ctrl+I | Seçili metni kalın / italik yap |
@@ -100,13 +103,14 @@ YMH219-NotepadApp/
 │   │   ├── Models/Not.cs           Not sınıfı: başlık, içerik, kategori, tarihler, doğrulama
 │   │   └── Services/
 │   │       ├── NotDefteri.cs       List<Not> yönetimi: ekle, güncelle, sil, ara, filtrele
+│   │       ├── BicimliDisaAktarici.cs  .rtf ve .html dışa aktarma (küçük RTF → HTML ayrıştırıcısı)
 │   │       ├── NotDeposu.cs        Not başına JSON dosyası, artımlı kayıt, eski biçimden taşıma, bozuk dosya yönetimi
 │   │       └── TxtDisaAktarici.cs  Notu .txt dosyasına yazma (StreamWriter)
 │   └── NotepadApp/                 Windows Forms uygulaması
 │       ├── Program.cs              Giriş noktası, --veri parametresi
 │       ├── MainForm.cs             Olay yöneticileri ve kullanıcı etkileşimi
 │       └── MainForm.Designer.cs    Form kontrolleri
-├── tests/NotepadApp.Tests/         17 testlik konsol test çalıştırıcısı
+├── tests/NotepadApp.Tests/         19 testlik konsol test çalıştırıcısı
 └── docs/screenshots/               README ekran görüntüleri
 ```
 
@@ -116,6 +120,5 @@ Ayrıntılı açıklama için [KOD-REHBERI.md](KOD-REHBERI.md) dosyasına bakın
 
 ## Bilinen Sınırlamalar / Geliştirme Notları
 
-- .txt dışa aktarmada kalın/italik biçimlendirme kaybolur, yalnızca düz metin yazılır.
 - Geri al / yinele geçmişi yalnızca RichTextBox'ın kendi geri alma özelliğiyle sınırlıdır.
 - Olası geliştirmeler: not sabitleme, etiket (çoklu kategori), XML'e alternatif serileştirme, karanlık tema.

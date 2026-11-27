@@ -431,9 +431,9 @@ public partial class MainForm : Form
 
         using var dialog = new SaveFileDialog
         {
-            Title = "Notu düz metin olarak kaydet",
-            Filter = "Metin dosyası (*.txt)|*.txt",
-            FileName = TxtDisaAktarici.DosyaAdiOner(not),
+            Title = "Notu dışa aktar",
+            Filter = "Zengin metin — kalın/italik korunur (*.rtf)|*.rtf|Web sayfası — kalın/italik korunur (*.html)|*.html|Düz metin (*.txt)|*.txt",
+            FileName = Path.GetFileNameWithoutExtension(TxtDisaAktarici.DosyaAdiOner(not)),
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -441,7 +441,12 @@ public partial class MainForm : Form
 
         try
         {
-            TxtDisaAktarici.DisaAktar(not, dialog.FileName);
+            switch (Path.GetExtension(dialog.FileName).ToLowerInvariant())
+            {
+                case ".rtf": BicimliDisaAktarici.RtfOlarakAktar(not, dialog.FileName); break;
+                case ".html": case ".htm": BicimliDisaAktarici.HtmlOlarakAktar(not, dialog.FileName); break;
+                default: TxtDisaAktarici.DisaAktar(not, dialog.FileName); break;
+            }
             DurumYaz($"Dışa aktarıldı: {dialog.FileName}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
