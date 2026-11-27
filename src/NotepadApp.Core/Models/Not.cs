@@ -16,6 +16,12 @@ public class Not
     /// <summary>RichTextBox biçimlendirmesi (kalın/italik) için RTF içeriği. Boş olabilir.</summary>
     public string? RtfIcerik { get; set; }
     public DateTime OlusturmaTarihi { get; set; }
+
+    /// <summary>
+    /// Her güncellemede bir artar. Aynı not iki pencereden düzenlenirse, diskteki sürüm
+    /// pencerenin bildiğinden farklıysa kaydetme çakışma olarak bildirilir (iyimser eşzamanlılık).
+    /// </summary>
+    public int Surum { get; set; }
     public DateTime DuzenlemeTarihi { get; set; }
 
     public Not()
@@ -39,6 +45,7 @@ public class Not
         Kategori = KategoriDuzenle(kategori);
         RtfIcerik = rtfIcerik;
         DuzenlemeTarihi = DateTime.Now;
+        Surum++;
     }
 
     /// <summary>Başlıkta veya içerikte aranan metin geçiyor mu? (büyük/küçük harf duyarsız)</summary>

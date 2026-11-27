@@ -16,6 +16,10 @@ public partial class MainForm : Form
     private bool _duzenleyiciKirli;   // Düzenleyicide kaydedilmemiş değişiklik var mı?
     private bool _dosyaKirli;         // Bellekteki notlar dosyaya yazılmadı mı?
     private bool _arayuzGuncelleniyor; // Programatik güncellemelerde olayları yok saymak için
+    private FileSystemWatcher? _izleyici;          // Başka pencerelerin yaptığı değişiklikleri fark etmek için
+    private readonly System.Windows.Forms.Timer _disDegisiklikZamanlayici = new() { Interval = 600 };
+    private bool _kendiYazmam;                     // Kendi kaydımızın tetiklediği izleyici olaylarını yok say
+    private DateTime _sonKendiYazma;               // İzleyici olayları gecikmeli gelir: kendi yazmamızdan sonraki 1,5 sn yok sayılır
 
     public MainForm(string veriDosyasi)
     {
@@ -30,6 +34,99 @@ public partial class MainForm : Form
     {
         lblDosya.Text = _depo.KlasorYolu;
         DosyadanYukle(ilkAcilis: true);
+        DisDegisiklikleriIzle();
+    }
+
+    // ---------------------------------------------------------------- Çoklu pencere / dış değişiklik
+
+    /// <summary>
+    /// Not klasörü izlenir: başka bir pencere bir notu kaydederse ve bu pencerede kaydedilmemiş değişiklik yoksa
+    /// notlar sessizce yeniden yüklenir; varsa kullanıcı bilgilendirilir, çakışma kaydetme anında çözülür.
+    /// </summary>
+    private void DisDegisiklikleriIzle()
+    {
+        try
+        {
+            Directory.CreateDirectory(_depo.KlasorYolu);
+            _izleyici = new FileSystemWatcher(_depo.KlasorYolu, "*.json")
+            {
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
+                SynchronizingObject = this,   // olaylar UI iş parçacığında gelsin
+                EnableRaisingEvents = true
+            };
+            FileSystemEventHandler tetikle = (_, _) => { if (!_kendiYazmam && (DateTime.Now - _sonKendiYazma).TotalMilliseconds > 1500) { _disDegisiklikZamanlayici.Stop(); _disDegisiklikZamanlayici.Start(); } };
+            _izleyici.Changed += tetikle;
+            _izleyici.Created += tetikle;
+            _izleyici.Deleted += tetikle;
+            _izleyici.Renamed += (s, e) => tetikle(s, e);
+            _disDegisiklikZamanlayici.Tick += (_, _) => { _disDegisiklikZamanlayici.Stop(); DisDegisiklikAlgilandi(); };
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            DurumYaz("Not klasörü izlenemiyor; başka pencerelerin değişiklikleri otomatik görünmeyecek.");
+        }
+    }
+
+    private void DisDegisiklikAlgilandi()
+    {
+        if (_duzenleyiciKirli || _dosyaKirli)
+        {
+            DurumYaz("Başka bir pencere notları değiştirdi. Kaydettiğinizde çakışmalar size sorulacak.");
+            return;
+        }
+        Guid? acik = _seciliId;
+        DosyadanYukle(ilkAcilis: false);
+        if (acik is Guid id && _defter.Bul(id) is Not not)
+            NotuDuzenleyicideAc(not);
+        DurumYaz($"Başka bir penceredeki değişiklikler yüklendi ({DateTime.Now:HH:mm:ss}).");
+    }
+
+    /// <summary>Kaydetme sırasında başka pencerenin değiştirdiği notlar için kullanıcıya sorar.</summary>
+    private void CakismalariCoz(List<Not> cakismalar)
+    {
+        foreach (var disk in cakismalar)
+        {
+            var yerel = _defter.Bul(disk.Id);
+            string ad = yerel?.Baslik ?? disk.Baslik;
+            var cevap = MessageBox.Show(this,
+                $"\"{ad}\" notu siz düzenlerken başka bir pencerede değiştirildi " +
+                $"(diskteki: {disk.DuzenlemeTarihi:HH:mm:ss}).\n\n" +
+                "Evet: Benim sürümüm kaydedilsin (diğerinin üzerine yaz)\n" +
+                "Hayır: Diskteki sürümü al (benim değişikliğim atılsın)\n" +
+                "İptal: İkisini de tut (benimki kopya olarak eklensin)",
+                "Not çakışması", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
+
+            _kendiYazmam = true;
+            try
+            {
+                if (yerel is null)
+                {
+                    // Bu pencerede silinmiş ama başka pencerede değiştirilmiş: Hayır/İptal => geri getir
+                    if (cevap != DialogResult.Yes) { _depo.DisktekiniKabulEt(disk); _defter.Degistir(disk); }
+                    else { _depo.DisktekiniKabulEt(disk); _depo.Kaydet(_defter.Notlar); }
+                }
+                else if (cevap == DialogResult.Yes)
+                    _depo.BeniminkiniYaz(yerel, disk);
+                else if (cevap == DialogResult.No)
+                {
+                    _depo.DisktekiniKabulEt(disk);
+                    _defter.Degistir(disk);
+                }
+                else
+                {
+                    _defter.KopyasiniEkle(yerel);
+                    _depo.DisktekiniKabulEt(disk);
+                    _defter.Degistir(disk);
+                }
+                _depo.Kaydet(_defter.Notlar);
+            }
+            finally { _kendiYazmam = false; _sonKendiYazma = DateTime.Now; }
+        }
+        ListeyiYenile();
+        if (_seciliId is Guid id && _defter.Bul(id) is Not acik)
+            NotuDuzenleyicideAc(acik);
+        _dosyaKirli = false;
+        DurumYaz($"{cakismalar.Count} çakışma çözüldü.");
     }
 
     private void DosyadanYukle(bool ilkAcilis)
@@ -62,9 +159,14 @@ public partial class MainForm : Form
     {
         try
         {
-            var sonuc = _depo.Kaydet(_defter.Notlar);
+            KayitSonucu sonuc;
+            _kendiYazmam = true;
+            try { sonuc = _depo.Kaydet(_defter.Notlar); }
+            finally { _kendiYazmam = false; _sonKendiYazma = DateTime.Now; }
             _dosyaKirli = false;
             DurumYaz($"Kaydedildi: {DateTime.Now:HH:mm:ss} ({_defter.Sayi} not; {sonuc.Yazilan} dosya yazıldı, {sonuc.Silinen} silindi)");
+            if (sonuc.Cakismalar.Count > 0)
+                BeginInvoke(() => CakismalariCoz(sonuc.Cakismalar));
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

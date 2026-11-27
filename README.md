@@ -61,6 +61,10 @@ Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --v
 - **Artımlı (incremental) kayıt:** her not ayrı dosyadadır; kaydetmede yalnızca içeriği değişen notların dosyası yeniden
   yazılır, silinen notun dosyası kaldırılır (durum çubuğunda "x dosya yazıldı, y silindi"). Yazma, geçici dosya + taşıma ile
   atomiktir. Eski sürümün tek dosyalı `notlar.json`'ı ilk açılışta klasöre taşınır ve `notlar.json.eski` olarak saklanır.
+- **Çoklu pencere güvenliği (iyimser eşzamanlılık):** her notun bir `Surum` numarası vardır. Uygulama iki pencerede
+  açıksa ve aynı not ikisinde de değiştirilirse, ikinci kaydeden **çakışma** penceresi görür: *benim sürümüm*,
+  *diskteki sürüm* veya *ikisini de tut (kopya)*. Başka pencerenin eklediği notlar asla silinmez. Not klasörü
+  `FileSystemWatcher` ile izlenir; bu pencerede kaydedilmemiş değişiklik yoksa diğer pencerenin kaydettikleri otomatik yüklenir.
 - **.txt dışa aktarma** — seçili not; başlık, kategori ve tarihlerle birlikte düz metin olarak kaydedilir
 - **Hata yönetimi**
   - Dosya yoksa boş liste ile başlanır (ilk açılış)
@@ -102,7 +106,7 @@ YMH219-NotepadApp/
 │       ├── Program.cs              Giriş noktası, --veri parametresi
 │       ├── MainForm.cs             Olay yöneticileri ve kullanıcı etkileşimi
 │       └── MainForm.Designer.cs    Form kontrolleri
-├── tests/NotepadApp.Tests/         15 testlik konsol test çalıştırıcısı
+├── tests/NotepadApp.Tests/         17 testlik konsol test çalıştırıcısı
 └── docs/screenshots/               README ekran görüntüleri
 ```
 
@@ -112,7 +116,6 @@ Ayrıntılı açıklama için [KOD-REHBERI.md](KOD-REHBERI.md) dosyasına bakın
 
 ## Bilinen Sınırlamalar / Geliştirme Notları
 
-- Aynı not dosyası iki ayrı uygulama penceresinden aynı anda düzenlenirse son kaydeden kazanır (kilit mekanizması yoktur).
 - .txt dışa aktarmada kalın/italik biçimlendirme kaybolur, yalnızca düz metin yazılır.
 - Geri al / yinele geçmişi yalnızca RichTextBox'ın kendi geri alma özelliğiyle sınırlıdır.
 - Olası geliştirmeler: not sabitleme, etiket (çoklu kategori), XML'e alternatif serileştirme, karanlık tema.

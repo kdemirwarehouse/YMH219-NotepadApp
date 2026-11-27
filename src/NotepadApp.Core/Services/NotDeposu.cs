@@ -8,8 +8,14 @@ namespace NotepadApp.Core.Services;
 /// <summary>Dosyadan yükleme işleminin sonucu: notlar ve varsa kullanıcıya gösterilecek uyarı.</summary>
 public record YuklemeSonucu(List<Not> Notlar, string? Uyari);
 
-/// <summary>Kaydetme sonucu: diske yazılan ve silinen not dosyası sayısı.</summary>
-public record KayitSonucu(int Yazilan, int Silinen);
+/// <summary>
+/// Kaydetme sonucu: diske yazılan ve silinen not dosyası sayısı ile çakışan notların diskteki sürümleri.
+/// </summary>
+public record KayitSonucu(int Yazilan, int Silinen)
+{
+    /// <summary>Başka bir pencere/uygulama tarafından değiştirildiği için yazılmayan notların diskteki hâli.</summary>
+    public List<Not> Cakismalar { get; init; } = new();
+}
 
 /// <summary>
 /// Notları JSON olarak saklar (File I/O + Serialization).
@@ -35,6 +41,9 @@ public class NotDeposu
 
     /// <summary>Son yükleme/kaydetmede diskte olduğu bilinen notların JSON içeriği (değişiklik tespiti için).</summary>
     private readonly Dictionary<Guid, string> _diskIcerigi = new();
+
+    /// <summary>Son yükleme/kaydetmede diskte görülen sürüm numaraları (çakışma tespiti için).</summary>
+    private readonly Dictionary<Guid, int> _bilinenSurum = new();
 
     /// <summary>Eski tek dosyalı biçimin yolu (geriye dönük uyumluluk için).</summary>
     public string DosyaYolu { get; }
@@ -68,25 +77,78 @@ public class NotDeposu
         Directory.CreateDirectory(KlasorYolu);
         var liste = notlar.ToList();
         int yazilan = 0, silinen = 0;
+        var cakismalar = new List<Not>();
 
         foreach (var not in liste)
         {
             string json = Serilestir(not);
             if (_diskIcerigi.TryGetValue(not.Id, out var eski) && eski == json)
                 continue;   // değişmemiş: dosyaya dokunma
-            AtomikYaz(NotDosyasi(not.Id), json);
-            _diskIcerigi[not.Id] = json;
+            if (DisaridanDegisti(not.Id) is Not disk)
+            {
+                cakismalar.Add(disk);
+                continue;
+            }
+            NotuYaz(not, json);
             yazilan++;
         }
 
         var mevcutIdler = liste.Select(n => n.Id).ToHashSet();
         foreach (var id in _diskIcerigi.Keys.Where(id => !mevcutIdler.Contains(id)).ToList())
         {
+            if (DisaridanDegisti(id) is Not disk)
+            {
+                cakismalar.Add(disk);   // başka pencere bu notu değiştirmiş: silmeden önce kullanıcıya sor
+                continue;
+            }
             File.Delete(NotDosyasi(id));
             _diskIcerigi.Remove(id);
+            _bilinenSurum.Remove(id);
             silinen++;
         }
-        return new KayitSonucu(yazilan, silinen);
+        return new KayitSonucu(yazilan, silinen) { Cakismalar = cakismalar };
+    }
+
+    private void NotuYaz(Not not, string? json = null)
+    {
+        json ??= Serilestir(not);
+        AtomikYaz(NotDosyasi(not.Id), json);
+        _diskIcerigi[not.Id] = json;
+        _bilinenSurum[not.Id] = not.Surum;
+    }
+
+    /// <summary>
+    /// Not dosyası bu depo son gördüğünden beri başka biri tarafından değiştirildiyse diskteki hâlini döndürür.
+    /// Dosya hiç görülmediyse ve şimdi varsa (iki pencerede aynı Id — pratikte olmaz) yine çakışma sayılır.
+    /// </summary>
+    public Not? DisaridanDegisti(Guid id)
+    {
+        string yol = NotDosyasi(id);
+        if (!File.Exists(yol))
+            return null;
+        Not? disk;
+        try { disk = JsonSerializer.Deserialize<Not>(File.ReadAllText(yol, Encoding.UTF8), JsonAyarlari); }
+        catch (Exception ex) when (ex is JsonException or IOException) { return null; }
+        if (disk is null)
+            return null;
+        bool biliniyor = _bilinenSurum.TryGetValue(id, out int bilinen);
+        if (biliniyor && disk.Surum == bilinen && _diskIcerigi.TryGetValue(id, out var icerik) && icerik == Serilestir(disk))
+            return null;
+        return biliniyor || !_diskIcerigi.ContainsKey(id) ? disk : null;
+    }
+
+    /// <summary>Çakışmada "benim sürümüm kazansın": sürüm numarası diskteki sürümün üstüne çıkarılıp yazılır.</summary>
+    public void BeniminkiniYaz(Not yerel, Not disk)
+    {
+        yerel.Surum = Math.Max(yerel.Surum, disk.Surum) + 1;
+        NotuYaz(yerel);
+    }
+
+    /// <summary>Çakışmada "diskteki sürümü al" veya dış değişiklik yüklendiğinde: notu bilinen duruma işaretler.</summary>
+    public void DisktekiniKabulEt(Not disk)
+    {
+        _diskIcerigi[disk.Id] = Serilestir(disk);
+        _bilinenSurum[disk.Id] = disk.Surum;
     }
 
     /// <summary>Önce geçici dosyaya yazar, sonra asıl dosyanın yerine taşır (yarıda kalan yazma eski dosyayı bozmaz).</summary>
@@ -100,6 +162,7 @@ public class NotDeposu
     public YuklemeSonucu Yukle()
     {
         _diskIcerigi.Clear();
+        _bilinenSurum.Clear();
         string? tasimaUyarisi = null;
 
         if (!Directory.Exists(KlasorYolu))
@@ -128,6 +191,7 @@ public class NotDeposu
                     throw new JsonException("Başlık yok.");
                 notlar.Add(not);
                 _diskIcerigi[not.Id] = Serilestir(not);
+                _bilinenSurum[not.Id] = not.Surum;
             }
             catch (JsonException)
             {

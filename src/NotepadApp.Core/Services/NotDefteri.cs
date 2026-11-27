@@ -43,6 +43,23 @@ public class NotDefteri
 
     public Not? Bul(Guid id) => _notlar.FirstOrDefault(n => n.Id == id);
 
+    /// <summary>Aynı Id'li notu verilen nesneyle değiştirir (yoksa ekler). Çakışma çözümü / dış değişiklik için.</summary>
+    public void Degistir(Not not)
+    {
+        int i = _notlar.FindIndex(n => n.Id == not.Id);
+        if (i >= 0) _notlar[i] = not; else _notlar.Add(not);
+        DegistiBildir();
+    }
+
+    /// <summary>Notun içeriğini yeni bir Id ile kopyalar ("(kopya)" ekiyle). Çakışmada iki sürümü de tutmak için.</summary>
+    public Not KopyasiniEkle(Not kaynak)
+    {
+        string baslik = kaynak.Baslik.Length + 8 > Not.MaksimumBaslikUzunlugu
+            ? kaynak.Baslik[..(Not.MaksimumBaslikUzunlugu - 8)] + " (kopya)"
+            : kaynak.Baslik + " (kopya)";
+        return Ekle(baslik, kaynak.Icerik, kaynak.Kategori, kaynak.RtfIcerik);
+    }
+
     /// <summary>
     /// Arama metni ve kategoriye göre süzülmüş liste döner.
     /// Son düzenlenen not en üstte yer alır.

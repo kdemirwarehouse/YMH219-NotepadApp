@@ -151,14 +151,55 @@ Test("Yalnızca değişen not yazılır, silinen notun dosyası kaldırılır", 
     var a = defter.Ekle("A", "1");
     var b = defter.Ekle("B", "2");
     var c = defter.Ekle("C", "3");
-    Dogrula(depo.Kaydet(defter.Notlar) == new KayitSonucu(3, 0), "İlk kayıtta 3 dosya yazılmalı");
-    Dogrula(depo.Kaydet(defter.Notlar) == new KayitSonucu(0, 0), "Değişiklik yokken hiçbir dosya yazılmamalı");
+    var k1 = depo.Kaydet(defter.Notlar);
+    Dogrula(k1.Yazilan == 3 && k1.Silinen == 0, "İlk kayıtta 3 dosya yazılmalı");
+    var k2 = depo.Kaydet(defter.Notlar);
+    Dogrula(k2.Yazilan == 0 && k2.Silinen == 0, "Değişiklik yokken hiçbir dosya yazılmamalı");
     defter.Guncelle(b.Id, "B2", "yeni", null);
     defter.Sil(c.Id);
-    Dogrula(depo.Kaydet(defter.Notlar) == new KayitSonucu(1, 1), "Yalnızca B yazılmalı, C silinmeli");
+    var k3 = depo.Kaydet(defter.Notlar);
+    Dogrula(k3.Yazilan == 1 && k3.Silinen == 1, "Yalnızca B yazılmalı, C silinmeli");
     Dogrula(!File.Exists(depo.NotDosyasi(c.Id)) && File.Exists(depo.NotDosyasi(a.Id)), "C dosyası silinmiş, A duruyor olmalı");
     var yeni = new NotDeposu(yol).Yukle();
     Dogrula(yeni.Notlar.Count == 2 && yeni.Notlar.Any(n => n.Baslik == "B2"), "Yeniden yüklemede 2 not ve güncel B olmalı");
+});
+
+Test("İki pencere aynı notu değiştirirse ikinci kayıt çakışma bildirir", () =>
+{
+    string yol = Path.Combine(geciciKlasor, "cakisma", "notlar.json");
+    var ilk = new NotDeposu(yol);
+    var defter0 = new NotDefteri();
+    var not = defter0.Ekle("Ortak not", "ilk");
+    ilk.Kaydet(defter0.Notlar);
+
+    // İki pencere aynı anda açılır
+    var depoA = new NotDeposu(yol); var defterA = new NotDefteri(); defterA.Yukle(depoA.Yukle().Notlar);
+    var depoB = new NotDeposu(yol); var defterB = new NotDefteri(); defterB.Yukle(depoB.Yukle().Notlar);
+
+    defterA.Guncelle(not.Id, "Ortak not", "A yazdı", null);
+    Dogrula(depoA.Kaydet(defterA.Notlar).Cakismalar.Count == 0, "İlk kaydeden çakışma görmemeli");
+
+    defterB.Guncelle(not.Id, "Ortak not", "B yazdı", null);
+    var sonuc = depoB.Kaydet(defterB.Notlar);
+    Dogrula(sonuc.Cakismalar.Count == 1 && sonuc.Cakismalar[0].Icerik == "A yazdı", "B çakışma almalı ve diskteki A sürümünü görmeli");
+    Dogrula(new NotDeposu(yol).Yukle().Notlar[0].Icerik == "A yazdı", "Diskteki A sürümü ezilmemeli");
+
+    depoB.BeniminkiniYaz(defterB.Bul(not.Id)!, sonuc.Cakismalar[0]);
+    var son = new NotDeposu(yol).Yukle().Notlar[0];
+    Dogrula(son.Icerik == "B yazdı" && son.Surum > sonuc.Cakismalar[0].Surum, "Benimkini yaz B'yi daha yüksek sürümle kaydetmeli");
+    Dogrula(depoB.Kaydet(defterB.Notlar).Cakismalar.Count == 0, "Çözümden sonra çakışma kalmamalı");
+});
+
+Test("Başka pencerenin eklediği not kaydetmede silinmez; kopya oluşturma", () =>
+{
+    string yol = Path.Combine(geciciKlasor, "ekleme", "notlar.json");
+    var depoA = new NotDeposu(yol); var defterA = new NotDefteri(); defterA.Yukle(depoA.Yukle().Notlar);
+    var depoB = new NotDeposu(yol); var defterB = new NotDefteri(); defterB.Yukle(depoB.Yukle().Notlar);
+    defterB.Ekle("B'nin notu", "x"); depoB.Kaydet(defterB.Notlar);
+    defterA.Ekle("A'nın notu", "y"); depoA.Kaydet(defterA.Notlar);
+    Dogrula(new NotDeposu(yol).Yukle().Notlar.Count == 2, "İki pencerenin notu da diskte kalmalı");
+    var kopya = defterA.KopyasiniEkle(defterA.Notlar[0]);
+    Dogrula(kopya.Baslik.EndsWith("(kopya)") && kopya.Id != defterA.Notlar[0].Id, "Kopya yeni Id ve (kopya) ekiyle oluşmalı");
 });
 
 Test("Eski tek dosyalı notlar.json klasör biçimine taşınır", () =>
