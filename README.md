@@ -12,12 +12,12 @@ her açıldığında otomatik olarak geri yüklenir. Nesne Tabanlı Programlama 
 
 ## Ekran Görüntüleri
 
-| Not listesi ve düzenleyici | Yeniden açılış sonrası arama + kategori filtresi |
+| Açık tema — 📌 sabit notlar, `#etiket`ler, biçimli içerik | Karanlık tema — "sınav" etiket filtresi |
 |---|---|
-| ![Not listesi](docs/screenshots/01-not-listesi.png) | ![Arama ve filtre](docs/screenshots/02-arama-ve-kategori-filtresi.png) |
+| ![Not listesi](docs/screenshots/01-not-listesi.png) | ![Karanlık tema ve etiket filtresi](docs/screenshots/02-karanlik-tema-etiket-filtresi.png) |
 
-İkinci görüntü uygulama kapatılıp yeniden açıldıktan sonra alınmıştır; durum çubuğundaki
-"4 not yüklendi." mesajı notların dosyadan geri yüklendiğini gösterir.
+Durum çubuğundaki "6 not yüklendi." mesajı notların not klasöründen (her not ayrı `.json` dosyası) geri yüklendiğini gösterir.
+Sağ alttaki yol, `--veri` parametresiyle verilen not klasörüdür.
 
 ## Kullanılan Teknolojiler
 
@@ -138,4 +138,8 @@ sınıfındadır. `NotDefteri` her değişiklikte `Degisti` olayını tetikler, 
 Ayrıntılı açıklama için [KOD-REHBERI.md](KOD-REHBERI.md) dosyasına bakın.
 
 ## Bilinen Sınırlamalar / Geliştirme Notları
+
+- Çakışma algılama not düzeyindedir; aynı notun farklı paragraflarını iki pencerede değiştirmek de çakışma sayılır
+  (otomatik birleştirme yapılmaz, kullanıcı hangi sürümün kalacağını seçer).
+- Karanlık temada `ComboBox` açılır okları Windows'un standart çizimini kullanır.
 
