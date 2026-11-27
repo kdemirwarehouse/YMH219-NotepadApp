@@ -107,7 +107,7 @@ Test("JSON kaydet ve geri yükle (Türkçe karakterlerle)", () =>
     defter.Ekle("Çalışma planı", "İş, güç, şeker, ğ ü ö ç ı", "Okul");
     depo.Kaydet(defter.Notlar);
 
-    Dogrula(File.ReadAllText(yol).Contains("Çalışma planı"), "Türkçe karakterler dosyada okunabilir olmalı");
+    Dogrula(File.ReadAllText(depo.NotDosyasi(defter.Notlar[0].Id)).Contains("Çalışma planı"), "Türkçe karakterler dosyada okunabilir olmalı");
 
     var sonuc = depo.Yukle();
     Dogrula(sonuc.Uyari is null, "Uyarı olmamalı");
@@ -141,6 +141,51 @@ Test("Boş dosya uyarı ile boş liste döner", () =>
     File.WriteAllText(yol, "");
     var sonuc = new NotDeposu(yol).Yukle();
     Dogrula(sonuc.Notlar.Count == 0 && sonuc.Uyari is not null, "Boş dosya için uyarı beklenirdi");
+});
+
+Test("Yalnızca değişen not yazılır, silinen notun dosyası kaldırılır", () =>
+{
+    string yol = Path.Combine(geciciKlasor, "artimli", "notlar.json");
+    var depo = new NotDeposu(yol);
+    var defter = new NotDefteri();
+    var a = defter.Ekle("A", "1");
+    var b = defter.Ekle("B", "2");
+    var c = defter.Ekle("C", "3");
+    Dogrula(depo.Kaydet(defter.Notlar) == new KayitSonucu(3, 0), "İlk kayıtta 3 dosya yazılmalı");
+    Dogrula(depo.Kaydet(defter.Notlar) == new KayitSonucu(0, 0), "Değişiklik yokken hiçbir dosya yazılmamalı");
+    defter.Guncelle(b.Id, "B2", "yeni", null);
+    defter.Sil(c.Id);
+    Dogrula(depo.Kaydet(defter.Notlar) == new KayitSonucu(1, 1), "Yalnızca B yazılmalı, C silinmeli");
+    Dogrula(!File.Exists(depo.NotDosyasi(c.Id)) && File.Exists(depo.NotDosyasi(a.Id)), "C dosyası silinmiş, A duruyor olmalı");
+    var yeni = new NotDeposu(yol).Yukle();
+    Dogrula(yeni.Notlar.Count == 2 && yeni.Notlar.Any(n => n.Baslik == "B2"), "Yeniden yüklemede 2 not ve güncel B olmalı");
+});
+
+Test("Eski tek dosyalı notlar.json klasör biçimine taşınır", () =>
+{
+    string klasor = Path.Combine(geciciKlasor, "tasima");
+    Directory.CreateDirectory(klasor);
+    string yol = Path.Combine(klasor, "notlar.json");
+    var eskiNotlar = new List<Not> { new("Eski 1", "x"), new("Eski 2", "y") };
+    File.WriteAllText(yol, System.Text.Json.JsonSerializer.Serialize(eskiNotlar));
+    var depo = new NotDeposu(yol);
+    var sonuc = depo.Yukle();
+    Dogrula(sonuc.Notlar.Count == 2, "İki eski not yüklenmeli");
+    Dogrula(Directory.GetFiles(depo.KlasorYolu, "*.json").Length == 2, "Her not ayrı dosyaya taşınmalı");
+    Dogrula(!File.Exists(yol) && File.Exists(yol + ".eski"), "Eski dosya .eski olarak saklanmalı");
+});
+
+Test("Klasördeki bozuk not dosyası yedeklenir, diğerleri yüklenir", () =>
+{
+    string yol = Path.Combine(geciciKlasor, "kismi", "notlar.json");
+    var depo = new NotDeposu(yol);
+    var defter = new NotDefteri();
+    defter.Ekle("Sağlam", "ok");
+    depo.Kaydet(defter.Notlar);
+    File.WriteAllText(Path.Combine(depo.KlasorYolu, Guid.NewGuid().ToString("N") + ".json"), "{ bozuk");
+    var sonuc = new NotDeposu(yol).Yukle();
+    Dogrula(sonuc.Notlar.Count == 1 && sonuc.Uyari is not null, "Sağlam not yüklenmeli ve uyarı verilmeli");
+    Dogrula(Directory.GetFiles(depo.KlasorYolu, "*.bak").Length == 1, "Bozuk dosya .bak yapılmalı");
 });
 
 Test("TXT dışa aktarma başlık, tarih ve içerik yazar", () =>

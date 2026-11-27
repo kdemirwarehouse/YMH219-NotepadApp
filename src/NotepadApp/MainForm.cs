@@ -28,7 +28,7 @@ public partial class MainForm : Form
 
     private void MainForm_Load(object? sender, EventArgs e)
     {
-        lblDosya.Text = _depo.DosyaYolu;
+        lblDosya.Text = _depo.KlasorYolu;
         DosyadanYukle(ilkAcilis: true);
     }
 
@@ -62,9 +62,9 @@ public partial class MainForm : Form
     {
         try
         {
-            _depo.Kaydet(_defter.Notlar);
+            var sonuc = _depo.Kaydet(_defter.Notlar);
             _dosyaKirli = false;
-            DurumYaz($"Kaydedildi: {DateTime.Now:HH:mm:ss} ({_defter.Sayi} not)");
+            DurumYaz($"Kaydedildi: {DateTime.Now:HH:mm:ss} ({_defter.Sayi} not; {sonuc.Yazilan} dosya yazıldı, {sonuc.Silinen} silindi)");
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

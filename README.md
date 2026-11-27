@@ -109,7 +109,6 @@ Ayrıntılı açıklama için [KOD-REHBERI.md](KOD-REHBERI.md) dosyasına bakın
 
 ## Bilinen Sınırlamalar / Geliştirme Notları
 
-- Tüm notlar tek bir JSON dosyasında tutulur; çok büyük not sayılarında her kayıtta dosyanın tamamı yeniden yazılır.
 - Aynı not dosyası iki ayrı uygulama penceresinden aynı anda düzenlenirse son kaydeden kazanır (kilit mekanizması yoktur).
 - .txt dışa aktarmada kalın/italik biçimlendirme kaybolur, yalnızca düz metin yazılır.
 - Geri al / yinele geçmişi yalnızca RichTextBox'ın kendi geri alma özelliğiyle sınırlıdır.
