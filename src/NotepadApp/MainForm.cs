@@ -33,12 +33,37 @@ public partial class MainForm : Form
     private bool _geriAliniyor;
     private ToolStripMenuItem mnuGeriAl = null!, mnuYinele = null!, mnuSabitle = null!;
 
+    private readonly TextBox txtEtiketler = new() { Name = "txtEtiketler", Width = 260, PlaceholderText = "etiketler: sınav, proje, acil" };
+    private readonly ComboBox cmbFiltreEtiket = new() { Name = "cmbFiltreEtiket", Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+
     public MainForm(string veriDosyasi)
     {
         InitializeComponent();
+        EtiketAlanlariniKur();
         _depo = new NotDeposu(veriDosyasi);
         _defter.Degisti += Defter_Degisti;
         GeriAlMenusunuKur();
+    }
+
+    // ---------------------------------------------------------------- Etiketler
+
+    /// <summary>Düzenleyicide kategorinin yanına etiket kutusu, filtre paneline etiket filtresi eklenir.</summary>
+    private void EtiketAlanlariniKur()
+    {
+        pnlDuzenleyici.Controls.Remove(cmbKategori);
+        cmbKategori.Dock = DockStyle.None;
+        cmbKategori.Margin = new Padding(0, 3, 12, 3);
+        var satir = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false, Margin = Padding.Empty };
+        var lblEtiket = new Label { Text = "Etiketler:", AutoSize = true, Margin = new Padding(3, 7, 3, 0) };
+        txtEtiketler.TextChanged += Duzenleyici_Changed;
+        satir.Controls.AddRange(new Control[] { cmbKategori, lblEtiket, txtEtiketler });
+        pnlDuzenleyici.Controls.Add(satir, 1, 1);
+
+        pnlFiltre.RowCount = 4;
+        pnlFiltre.SetRow(lblNotSayisi, 3);
+        pnlFiltre.Controls.Add(new Label { Text = "Etiket:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
+        pnlFiltre.Controls.Add(cmbFiltreEtiket, 1, 2);
+        cmbFiltreEtiket.SelectedIndexChanged += Filtre_Changed;
     }
 
     // ---------------------------------------------------------------- Geri al / yinele
@@ -297,13 +322,21 @@ public partial class MainForm : Form
                 ? seciliFiltre
                 : NotDefteri.TumKategoriler;
 
+            string? seciliEtiket = cmbFiltreEtiket.SelectedItem as string;
+            cmbFiltreEtiket.Items.Clear();
+            cmbFiltreEtiket.Items.Add(NotDefteri.TumEtiketler);
+            cmbFiltreEtiket.Items.AddRange(_defter.Etiketler().ToArray());
+            cmbFiltreEtiket.SelectedItem = seciliEtiket is not null && cmbFiltreEtiket.Items.Contains(seciliEtiket)
+                ? seciliEtiket
+                : NotDefteri.TumEtiketler;
+
             string kategoriMetni = cmbKategori.Text;
             cmbKategori.Items.Clear();
             cmbKategori.Items.AddRange(kategoriler.DefaultIfEmpty("Genel").ToArray());
             cmbKategori.Text = kategoriMetni;
 
             // Notları süzerek listele
-            var liste = _defter.Filtrele(txtAra.Text, cmbFiltreKategori.SelectedItem as string);
+            var liste = _defter.Filtrele(txtAra.Text, cmbFiltreKategori.SelectedItem as string, cmbFiltreEtiket.SelectedItem as string);
             lstNotlar.BeginUpdate();
             lstNotlar.Items.Clear();
             foreach (var not in liste)
@@ -353,6 +386,7 @@ public partial class MainForm : Form
             _seciliId = not.Id;
             txtBaslik.Text = not.Baslik;
             cmbKategori.Text = not.Kategori;
+            txtEtiketler.Text = not.EtiketMetni;
             if (!string.IsNullOrEmpty(not.RtfIcerik))
             {
                 try { rtbIcerik.Rtf = not.RtfIcerik; }
@@ -384,6 +418,7 @@ public partial class MainForm : Form
             txtBaslik.Clear();
             cmbKategori.Text = cmbFiltreKategori.SelectedItem is string k && k != NotDefteri.TumKategoriler ? k : "Genel";
             rtbIcerik.Clear();
+            txtEtiketler.Text = cmbFiltreEtiket.SelectedItem is string e && e != NotDefteri.TumEtiketler ? e : "";
             lblTarihler.Text = "Yeni not — kaydedildiğinde oluşturma tarihi atanacak.";
             _duzenleyiciKirli = false;
             BasligiGuncelle();
@@ -445,15 +480,16 @@ public partial class MainForm : Form
         try
         {
             string rtf = rtbIcerik.Rtf ?? string.Empty;
+            var etiketler = Not.EtiketleriAyristir(txtEtiketler.Text);
             Not not;
             if (_seciliId is Guid id && _defter.Bul(id) is not null)
             {
-                _defter.Guncelle(id, txtBaslik.Text, rtbIcerik.Text, cmbKategori.Text, rtf);
+                _defter.Guncelle(id, txtBaslik.Text, rtbIcerik.Text, cmbKategori.Text, rtf, etiketler);
                 not = _defter.Bul(id)!;
             }
             else
             {
-                not = _defter.Ekle(txtBaslik.Text, rtbIcerik.Text, cmbKategori.Text, rtf);
+                not = _defter.Ekle(txtBaslik.Text, rtbIcerik.Text, cmbKategori.Text, rtf, etiketler);
             }
 
             _duzenleyiciKirli = false;

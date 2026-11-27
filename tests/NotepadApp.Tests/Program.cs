@@ -288,6 +288,24 @@ Test("Sabitlenen not listenin en üstünde kalır", () =>
     Dogrula(!defter.SabitlemeDegistir(eski.Id) && defter.Filtrele(null, null)[0].Baslik == "Yeni not", "Kaldırınca sıra normale dönmeli");
 });
 
+Test("Etiketler: ayrıştırma, tekilleştirme, filtreleme ve aramada kullanım", () =>
+{
+    var etiketler = Not.EtiketleriAyristir(" sınav, #Proje; proje ,, acil ");
+    Dogrula(etiketler.SequenceEqual(new[] { "sınav", "Proje", "acil" }), "Etiketler kırpılmalı ve tekilleştirilmeli: " + string.Join("|", etiketler));
+    var defter = new NotDefteri();
+    defter.Ekle("Matematik", "türev", "Okul", etiketler: new[] { "sınav", "acil" });
+    defter.Ekle("Rapor", "", "Okul", etiketler: new[] { "proje" });
+    defter.Ekle("Market", "", "Ev");
+    Dogrula(defter.Filtrele(null, null, "SINAV").Count == 1, "Etiket filtresi büyük/küçük harf duyarsız olmalı");
+    Dogrula(defter.Filtrele(null, "Okul", NotDefteri.TumEtiketler).Count == 2, "(Tüm etiketler) filtre uygulamamalı");
+    Dogrula(defter.Filtrele("#proj", null).Count == 1, "Arama etiketlerde de yapılmalı");
+    Dogrula(defter.Etiketler().SequenceEqual(new[] { "acil", "proje", "sınav" }), "Etiket listesi tekil ve sıralı olmalı");
+    Dogrula(defter.Notlar[0].ToString().Contains("#sınav #acil"), "Listede etiketler görünmeli");
+    bool hata = false;
+    try { Not.EtiketleriAyristir(string.Join(",", Enumerable.Range(1, 11))); } catch (ArgumentException) { hata = true; }
+    Dogrula(hata, "11 etiket reddedilmeli");
+});
+
 Test("TXT dışa aktarma başlık, tarih ve içerik yazar", () =>
 {
     var not = new Not("Toplantı: 12/05", "Gündem maddeleri\n1) Bütçe");

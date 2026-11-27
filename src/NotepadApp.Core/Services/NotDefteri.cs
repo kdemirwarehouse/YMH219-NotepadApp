@@ -9,6 +9,7 @@ namespace NotepadApp.Core.Services;
 public class NotDefteri
 {
     public const string TumKategoriler = "(Tümü)";
+    public const string TumEtiketler = "(Tüm etiketler)";
 
     private readonly List<Not> _notlar = new();
 
@@ -18,18 +19,24 @@ public class NotDefteri
     public IReadOnlyList<Not> Notlar => _notlar;
     public int Sayi => _notlar.Count;
 
-    public Not Ekle(string baslik, string icerik, string? kategori = null, string? rtfIcerik = null)
+    public Not Ekle(string baslik, string icerik, string? kategori = null, string? rtfIcerik = null,
+                    IEnumerable<string>? etiketler = null)
     {
-        var not = new Not(baslik, icerik, kategori) { RtfIcerik = rtfIcerik };
+        var not = new Not(baslik, icerik, kategori)
+        {
+            RtfIcerik = rtfIcerik,
+            Etiketler = etiketler is null ? new() : Not.EtiketleriDuzenle(etiketler)
+        };
         _notlar.Add(not);
         DegistiBildir();
         return not;
     }
 
-    public void Guncelle(Guid id, string baslik, string icerik, string? kategori, string? rtfIcerik = null)
+    public void Guncelle(Guid id, string baslik, string icerik, string? kategori, string? rtfIcerik = null,
+                         IEnumerable<string>? etiketler = null)
     {
         var not = Bul(id) ?? throw new KeyNotFoundException("Düzenlenecek not bulunamadı.");
-        not.Guncelle(baslik, icerik, kategori, rtfIcerik);
+        not.Guncelle(baslik, icerik, kategori, rtfIcerik, etiketler);
         DegistiBildir();
     }
 
@@ -74,7 +81,7 @@ public class NotDefteri
     /// Arama metni ve kategoriye göre süzülmüş liste döner.
     /// Sabitlenmiş notlar en üstte, kendi aralarında ve diğerleri son düzenlenme tarihine göre sıralanır.
     /// </summary>
-    public List<Not> Filtrele(string? aranan, string? kategori)
+    public List<Not> Filtrele(string? aranan, string? kategori, string? etiket = null)
     {
         IEnumerable<Not> sorgu = _notlar;
 
@@ -83,6 +90,9 @@ public class NotDefteri
 
         if (!string.IsNullOrWhiteSpace(kategori) && kategori != TumKategoriler)
             sorgu = sorgu.Where(n => string.Equals(n.Kategori, kategori, StringComparison.CurrentCultureIgnoreCase));
+
+        if (!string.IsNullOrWhiteSpace(etiket) && etiket != TumEtiketler)
+            sorgu = sorgu.Where(n => n.EtiketiVar(etiket));
 
         return sorgu.OrderByDescending(n => n.Sabitlenmis)
                     .ThenByDescending(n => n.DuzenlemeTarihi)
@@ -95,11 +105,20 @@ public class NotDefteri
                .OrderBy(k => k)
                .ToList();
 
+    /// <summary>Tüm notlardaki etiketler (tekil, alfabetik).</summary>
+    public List<string> Etiketler() =>
+        _notlar.SelectMany(n => n.Etiketler)
+               .Distinct(StringComparer.CurrentCultureIgnoreCase)
+               .OrderBy(e => e)
+               .ToList();
+
     /// <summary>Dosyadan yüklenen notlarla koleksiyonun içeriğini değiştirir.</summary>
     public void Yukle(IEnumerable<Not> notlar)
     {
         _notlar.Clear();
         _notlar.AddRange(notlar.Where(n => n is not null && !string.IsNullOrWhiteSpace(n.Baslik)));
+        foreach (var n in _notlar)
+            n.Etiketler ??= new();   // eski JSON dosyalarında alan yok
     }
 
     private void DegistiBildir() => Degisti?.Invoke(this, EventArgs.Empty);

@@ -81,6 +81,9 @@ Farklı bir dosya ile denemek için: `dotnet run --project src/NotepadApp -- --v
   - **Kategori** desteği ve kategoriye göre filtreleme
   - Her işlemden sonra **otomatik kaydetme** (Not menüsünden kapatılabilir)
   - RichTextBox ile **kalın / italik** biçimlendirme (Ctrl+B, Ctrl+I); biçim RTF olarak saklanır
+  - **Etiketler (çoklu kategori):** her notun tek kategorisine ek olarak en fazla 10 etiketi olabilir
+    (`sınav, proje, acil` — virgül, noktalı virgül veya # ile ayrılır). Listede `#etiket` olarak görünür, filtre panelindeki
+    **Etiket** kutusuyla süzülür ve aramada da (`#proj`) eşleşir. Kategori ve etiket filtreleri birlikte kullanılabilir.
   - **Not sabitleme** (Not menüsü, Ctrl+P): sabitlenen notlar 📌 ile listenin en üstünde kalır; sabitleme JSON'da saklanır
   - **Çok seviyeli geri al / yinele** (Düzen menüsü, Ctrl+Z / Ctrl+Y): düzenleyicinin RTF + imleç durumu, yazma
     0,6 sn durduğunda bir adım olarak kaydedilir; kalın/italik değişiklikleri ayrı adımdır. 200 adım tutulur, menüde
@@ -117,7 +120,7 @@ YMH219-NotepadApp/
 │       ├── Program.cs              Giriş noktası, --veri parametresi
 │       ├── MainForm.cs             Olay yöneticileri ve kullanıcı etkileşimi
 │       └── MainForm.Designer.cs    Form kontrolleri
-├── tests/NotepadApp.Tests/         22 testlik konsol test çalıştırıcısı
+├── tests/NotepadApp.Tests/         23 testlik konsol test çalıştırıcısı
 └── docs/screenshots/               README ekran görüntüleri
 ```
 
@@ -127,4 +130,4 @@ Ayrıntılı açıklama için [KOD-REHBERI.md](KOD-REHBERI.md) dosyasına bakın
 
 ## Bilinen Sınırlamalar / Geliştirme Notları
 
-- Olası geliştirmeler: etiket (çoklu kategori), XML'e alternatif serileştirme, karanlık tema.
+- Olası geliştirmeler: XML'e alternatif serileştirme, karanlık tema.
